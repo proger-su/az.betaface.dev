@@ -12,6 +12,7 @@ defined( 'ABSPATH' ) or die( 'No direct access' );
 
 class betafaceAuth {
 
+	static $version = '1.0.0';
 	private $action = 'betaface_auth_handler';
 
 	function __construct() {
@@ -24,8 +25,9 @@ class betafaceAuth {
 	}
 
 	public function enqScripts() {
-		wp_enqueue_style( 'betaface-auth', plugin_dir_url( __FILE__ ) . 'static/css/styles.css' );
-		wp_enqueue_script( 'betaface-auth', plugin_dir_url( __FILE__ ) . 'static/js/scripts.js', array( 'jquery' ) );
+		wp_enqueue_style( 'betaface-auth', plugin_dir_url( __FILE__ ) . 'static/css/styles.css', array(), self::$version );
+		wp_enqueue_script( 'webcam', plugin_dir_url( __FILE__ ) . 'static/js/webcam.js', array(), '1.0.25', true );
+		wp_enqueue_script( 'betaface-auth', plugin_dir_url( __FILE__ ) . 'static/js/scripts.js', array( 'jquery', 'webcam' ), self::$version, true );
 
 		wp_localize_script( 'betaface-auth', 'betafaceAuthConfig', array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),

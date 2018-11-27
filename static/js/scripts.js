@@ -1,18 +1,39 @@
 var betafaceAuth = {
-    $forms: null,
+    $form: null,
     init: function () {
-        this.$forms = jQuery('form.betaface-auth');
+        this.webcam.parent = this;
+        this.$form = jQuery('#betaface-auth');
+        this.webcam.init();
         this.addEventListeners();
     },
     addEventListeners: function () {
         var _this = this;
-        this.$forms.each(function () {
-            var $self = jQuery(this);
-            $self.on('submit', function (event) {
+            this.$form.on('submit', function (event) {
                 event.preventDefault();
-                _this.runAuth(jQuery(this));
+
+                _this.webcam.get();
+
+//                _this.runAuth(jQuery(this));
             });
-        });
+    },
+    webcam: {
+        parent: null,
+        init: function () {
+            jQuery('<div id="betaface-auth-screen" />').insertAfter(this.parent.$form);
+            Webcam.set({
+                width: 900,
+                height: 400,
+                image_format: 'jpg',
+                jpeg_quality: 90
+            });
+
+            Webcam.attach('#betaface-auth-screen');
+        },
+        get: function () {
+            Webcam.snap(function (data_uri) {
+                console.log(data_uri);
+            });
+        }
     },
     runAuth: function ($self) {
         var $nonce = $self.find('#betaface-auth-nonce');
