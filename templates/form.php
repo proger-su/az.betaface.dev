@@ -4,8 +4,9 @@
 	<button type="submit" class="search-submit" name="betaface-auth-submit" value="1"><svg class="icon icon-search" aria-hidden="true" role="img"> <use href="#icon-envelope-o" xlink:href="#icon-search"></use> </svg></button>
 	<div id="betaface-auth-screen-wrap">
 		<div class="buttons">
-			<button class="reset">x</button>
-			<button class="run">+</button>
+			<button class="close" type="button">C</button>
+			<button class="login" type="button">L</button>
+			<button class="register" type="button">R</button>
 		</div>
 		<div id="betaface-auth-screen"></div>
 	</div>
