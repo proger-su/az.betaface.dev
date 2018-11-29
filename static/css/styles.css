@@ -1,10 +1,22 @@
-/*
-To change this license header, choose License Headers in Project Properties.
-To change this template file, choose Tools | Templates
-and open the template in the editor.
-*/
-/* 
-    Created on : Nov 19, 2018, 10:04:13 AM
-    Author     : dev
-*/
+#betaface-auth {
+  position: relative; }
 
+#betaface-auth-screen-wrap {
+  max-width: 100%;
+  position: absolute;
+  display: none;
+  top: 100%;
+  left: 0; }
+  #betaface-auth-screen-wrap .buttons {
+    position: absolute;
+    z-index: 1;
+    right: 5px;
+    top: 5px; }
+
+#betaface-auth-screen {
+  height: auto !important;
+  max-width: 100%; }
+  #betaface-auth-screen video {
+    height: auto !important; }
+
+/*# sourceMappingURL=styles.css.map */

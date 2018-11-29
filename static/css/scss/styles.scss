@@ -1,0 +1,28 @@
+#betaface-auth {
+    position: relative;
+}
+
+#betaface-auth-screen-wrap {
+    max-width: 100%;
+    position: absolute;
+    display: none;
+    top: 100%;
+    left: 0;
+
+    .buttons {
+        position: absolute;
+        z-index: 1;
+        right: 5px;
+        top: 5px;
+    }
+    
+}
+
+#betaface-auth-screen {
+    height: auto !important;
+    max-width: 100%;
+
+    video   {
+        height: auto !important;
+    }
+}
