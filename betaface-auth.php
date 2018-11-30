@@ -13,15 +13,19 @@ defined( 'ABSPATH' ) or die( 'No direct access' );
 class betafaceAuth {
 
 	static $version = '1.0.0';
-	private $action = 'betaface_auth_handler';
+	private $actions = array(
+		'register' => 'betaface_register'
+	);
 
 	function __construct() {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqScripts' ) );
 
 		add_shortcode( 'betaface-auth', array( $this, 'renderAuthForm' ) );
 
-		add_action( "wp_ajax_{$this->action}", array( $this, 'authHandler' ) );
-		add_action( "wp_ajax_nopriv_{$this->action}", array( $this, 'authHandler' ) );
+		foreach ( $this->actions as $key => $action ) {
+			add_action( "wp_ajax_{$action}", array( $this, $key ) );
+			add_action( "wp_ajax_nopriv_{$action}", array( $this, $key ) );
+		}
 	}
 
 	public function enqScripts() {
@@ -31,7 +35,7 @@ class betafaceAuth {
 
 		wp_localize_script( 'betaface-auth', 'betafaceAuthConfig', array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'action' => $this->action
+			'actions' => $this->actions
 		) );
 	}
 
@@ -44,6 +48,12 @@ class betafaceAuth {
 	public function authHandler() {
 		require_once('inc/api.php');
 		$api = new betaFaceApi();
+	}
+
+	public function register() {
+		check_ajax_referer( 'betaface-auth-nonce', 'nonce' );
+		
+		$email = filter_input(INPUT_POST, 'email');
 	}
 
 }

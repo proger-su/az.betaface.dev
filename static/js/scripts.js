@@ -1,9 +1,11 @@
 var betafaceAuth = {
-
     $form: null,
+    $email: null,
     init: function () {
         this.webcam.parent = this;
         this.$form = jQuery('#betaface-auth');
+        this.$email = jQuery('.betaface-auth-email', this.$form);
+        this.$nonce = jQuery('#betaface-auth-nonce', this.$form);
 
         if (!this.$form.length) {
             return;
@@ -17,7 +19,7 @@ var betafaceAuth = {
         this.$form.on('submit', function (event) {
             event.preventDefault();
 
-            _this.webcam.attach(jQuery(this));
+            _this.webcam.attach();
 
 //                _this.webcam.get();
 //                _this.runAuth(jQuery(this));
@@ -43,20 +45,26 @@ var betafaceAuth = {
             var _this = this;
             this.$btnClose.on('click', function (event) {
                 event.preventDefault();
-                _this.$wrap.css('display', 'none');
-                Webcam.reset();
+                _this.close();
             });
+
+            this.$btnRegister.on('click', function (event) {
+                event.preventDefault();
+                _this.parent.register();
+            });
+
         },
-        attach: function ($form) {
+        close: function () {
+            this.$wrap.css('display', 'none');
+            Webcam.reset();
+        },
+        attach: function () {
             if (!this.$screen.length) {
                 alert('No DOM element found!')
                 return;
             }
 
-            var email = $form.find('.betaface-auth-email').val();
-
-            if(!this.validateEmail(email)){
-                alert('Email is incorrect!')
+            if (!this.parent.validateEmail()) {
                 return;
             }
 
@@ -71,15 +79,52 @@ var betafaceAuth = {
 
             Webcam.attach('#betaface-auth-screen');
         },
-        validateEmail: function (email) {
-            var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-            return re.test(String(email).toLowerCase());
-        },
+
         get: function () {
             Webcam.snap(function (data_uri) {
                 console.log(data_uri);
             });
         },
+
+    },
+    validateEmail: function () {
+        var email = this.$email.val();
+        var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        if (re.test(String(email).toLowerCase())) {
+            return true;
+        }
+        alert('Email is empty or incorrect!');
+        return false;
+    },
+    register: function () {
+        if (!this.parent.validateEmail()) {
+            return;
+        }
+
+        var _this = this;
+        jQuery.ajax({
+            url: betafaceAuthConfig.ajaxUrl,
+            dataType: 'json',
+            type: 'POST',
+            data: {
+                action: betafaceAuthConfig.actions.register,
+                nonce: _this.$nonce.val(),
+                email: _this.$email.val(),
+            },
+            beforeSend: function () {
+            },
+            success: function (response) {
+                if (!response.success) {
+                    alert(response.data.message);
+                    return;
+                }
+
+            },
+            error: function (jqXHR, textStatus) {
+            },
+            complete: function () {
+            }
+        });
 
     },
     runAuth: function ($self) {
