@@ -54,6 +54,8 @@ class betafaceAuth {
 		check_ajax_referer( 'betaface-auth-nonce', 'nonce' );
 		
 		$email = filter_input(INPUT_POST, 'email');
+		
+		$t = 555;
 	}
 
 }

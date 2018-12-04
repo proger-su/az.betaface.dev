@@ -97,35 +97,38 @@ var betafaceAuth = {
         return false;
     },
     register: function () {
-        if (!this.parent.validateEmail()) {
+        if (!this.validateEmail()) {
             return;
         }
 
         var _this = this;
-        jQuery.ajax({
-            url: betafaceAuthConfig.ajaxUrl,
-            dataType: 'json',
-            type: 'POST',
-            data: {
-                action: betafaceAuthConfig.actions.register,
-                nonce: _this.$nonce.val(),
-                email: _this.$email.val(),
-            },
-            beforeSend: function () {
-            },
-            success: function (response) {
-                if (!response.success) {
-                    alert(response.data.message);
-                    return;
+
+        Webcam.snap(function (photo) {
+            jQuery.ajax({
+                url: betafaceAuthConfig.ajaxUrl,
+                dataType: 'json',
+                type: 'POST',
+                data: {
+                    action: betafaceAuthConfig.actions.register,
+                    nonce: _this.$nonce.val(),
+                    email: _this.$email.val(),
+                    photo: photo
+                },
+                beforeSend: function () {
+                },
+                success: function (response) {
+                    if (!response.success) {
+                        alert(response.data.message);
+                        return;
+                    }
+
+                },
+                error: function (jqXHR, textStatus) {
+                },
+                complete: function () {
                 }
-
-            },
-            error: function (jqXHR, textStatus) {
-            },
-            complete: function () {
-            }
+            });
         });
-
     },
     runAuth: function ($self) {
         var $nonce = $self.find('#betaface-auth-nonce');
