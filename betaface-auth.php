@@ -50,7 +50,7 @@ class betafaceAuth {
 				<th><label for="year_of_birth"><?php esc_html_e( 'User photo', 'betaface-auth' ); ?></label></th>
 				<td>
 					<?php
-					$photo = (int) get_user_meta( $user->ID, 'betaface-auth-user-photo' );
+					$photo = (int) get_user_meta( $user->ID, 'betaface-auth-user-photo', true );
 					$url = wp_get_attachment_url( $photo );
 
 					if ( $url ) {
@@ -82,7 +82,9 @@ class betafaceAuth {
 		$email = filter_input( INPUT_POST, 'email', FILTER_VALIDATE_EMAIL );
 		$photo = filter_input( INPUT_POST, 'photo' );
 
-		wp_send_json_error( esc_html__( 'Email or photo is incorrect!', 'betaface-auth' ) );
+		if ( !$email || !$photo ) {
+			wp_send_json_error( esc_html__( 'Email or photo is incorrect!', 'betaface-auth' ) );
+		}
 
 		$random_password = wp_generate_password( 6 );
 		$user_name = explode( '@', $email );
