@@ -73,7 +73,7 @@ var betafaceAuth = {
             Webcam.set({
                 width: 900,
                 height: 500,
-                image_format: 'jpg',
+                image_format: 'jpeg',
                 jpeg_quality: 90
             });
 
