@@ -20,9 +20,6 @@ var betafaceAuth = {
             event.preventDefault();
 
             _this.webcam.attach();
-
-//                _this.webcam.get();
-//                _this.runAuth(jQuery(this));
         });
     },
     webcam: {
@@ -118,45 +115,58 @@ var betafaceAuth = {
                 },
                 success: function (response) {
                     if (!response.success) {
-                        alert(response.data.message);
+                        alert(response.data);
+                        _this.webcam.close();
                         return;
                     }
 
+                    location.reload();
                 },
                 error: function (jqXHR, textStatus) {
+                    alert(textStatus);
                 },
                 complete: function () {
                 }
             });
         });
     },
-    runAuth: function ($self) {
-        var $nonce = $self.find('#betaface-auth-nonce');
-        var $email = $self.find('.betaface-auth-email');
-        jQuery.ajax({
-            url: betafaceAuthConfig.ajaxUrl,
-            dataType: 'json',
-            type: 'POST',
-            data: {
-                action: betafaceAuthConfig.action,
-                nonce: $nonce.val(),
-                email: $email.val(),
-            },
-            beforeSend: function () {
-            },
-            success: function (response) {
-                if (!response.success) {
-                    alert(response.data.message);
-                    return;
-                }
+    login: function () {
+        if (!this.validateEmail()) {
+            return;
+        }
 
-            },
-            error: function (jqXHR, textStatus) {
-            },
-            complete: function () {
-            }
+        var _this = this;
+
+        Webcam.snap(function (photo) {
+            jQuery.ajax({
+                url: betafaceAuthConfig.ajaxUrl,
+                dataType: 'json',
+                type: 'POST',
+                data: {
+                    action: betafaceAuthConfig.actions.login,
+                    nonce: _this.$nonce.val(),
+                    email: _this.$email.val(),
+                    photo: photo
+                },
+                beforeSend: function () {
+                },
+                success: function (response) {
+                    if (!response.success) {
+                        alert(response.data);
+                        _this.webcam.close();
+                        return;
+                    }
+
+                    location.reload();
+                },
+                error: function (jqXHR, textStatus) {
+                    alert(textStatus);
+                },
+                complete: function () {
+                }
+            });
         });
-    }
+    },
 };
 
 jQuery(document).ready(function () {

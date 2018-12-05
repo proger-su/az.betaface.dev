@@ -13,7 +13,8 @@ class betafaceAuth {
 
 	static $version = '1.0.0';
 	private $actions = array(
-		'register' => 'betaface_register'
+		'register' => 'betaface_register',
+		'login' => 'betaface_login'
 	);
 
 	function __construct() {
@@ -71,16 +72,56 @@ class betafaceAuth {
 		return ob_get_clean();
 	}
 
-	public function authHandler() {
+	public function register() {
 		require_once('inc/api.php');
 		$api = new betaFaceApi();
-	}
 
-	public function register() {
 		check_ajax_referer( 'betaface-auth-nonce', 'nonce' );
 
 		$email = filter_input( INPUT_POST, 'email', FILTER_VALIDATE_EMAIL );
 		$photo = filter_input( INPUT_POST, 'photo' );
+
+		if ( is_user_logged_in() ) {
+			wp_send_json_error( esc_html__( 'You are already logged in!', 'betaface-auth' ) );
+		}
+
+		if ( !$email || !$photo ) {
+			wp_send_json_error( esc_html__( 'Email or photo is incorrect!', 'betaface-auth' ) );
+		}
+
+		$user = get_user_by( 'email', $email );
+
+		if ( !$user ) {
+			wp_send_json_error( esc_html__( 'This email not found!', 'betaface-auth' ) );
+		}
+
+		$photo = (int) get_user_meta( $user->ID, 'betaface-auth-user-photo', true );
+		$url = wp_get_attachment_url( $photo );
+
+		if ( !$url ) {
+			wp_send_json_error( esc_html__( 'Current photo not found! Use standard login form please!', 'betaface-auth' ) );
+		}
+
+		return;
+		
+		$upload_response = $api->upload_face("naz1.jpg", "nigga@proger.su");
+		$matches = $api->recognize_faces("naz2.jpg", "proger.su");
+
+		// Authorize user
+		wp_set_auth_cookie( $user_id, true );
+
+		return wp_send_json_success();
+	}
+
+	public function login() {
+		check_ajax_referer( 'betaface-auth-nonce', 'nonce' );
+
+		$email = filter_input( INPUT_POST, 'email', FILTER_VALIDATE_EMAIL );
+		$photo = filter_input( INPUT_POST, 'photo' );
+
+		if ( is_user_logged_in() ) {
+			wp_send_json_error( esc_html__( 'You are already logged in!', 'betaface-auth' ) );
+		}
 
 		if ( !$email || !$photo ) {
 			wp_send_json_error( esc_html__( 'Email or photo is incorrect!', 'betaface-auth' ) );
@@ -108,6 +149,9 @@ class betafaceAuth {
 		}
 
 		update_user_meta( $user_id, 'betaface-auth-user-photo', $id, true );
+
+		// Authorize user
+		wp_set_auth_cookie( $user_id, true );
 
 		return wp_send_json_success();
 	}
