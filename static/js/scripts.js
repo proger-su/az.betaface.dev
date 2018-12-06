@@ -50,6 +50,11 @@ var betafaceAuth = {
                 _this.parent.register();
             });
 
+            this.$btnLogin.on('click', function (event) {
+                event.preventDefault();
+                _this.parent.login();
+            });
+
         },
         close: function () {
             this.$wrap.css('display', 'none');

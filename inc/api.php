@@ -78,9 +78,8 @@ class betaFaceApi {
         return $result;
     }
 
-    function recognize_faces( $filename, $namespace ) {
+    function recognize_faces( $image_raw, $namespace ) {
         // Step 1: Encode image in base 64, upload it to service and get image ID
-        $image_raw     = file_get_contents( $filename );
         $image_encoded = base64_encode( $image_raw );
         $params        = array( "base64_data" => $image_encoded, "original_filename" => $filename );
         $result        = $this->api_call( 'UploadNewImage_File', $params );

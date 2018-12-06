@@ -2,8 +2,8 @@
 /*
   Plugin Name: Betaface Auth
   Description: WordPress Betaface Auth
-  Author: Sergey Pererva
-  Author URI: http://proger.su
+  Author: Alina Zakharchenko
+  Author URI: 
   Version: 1.0
  */
 
@@ -72,7 +72,7 @@ class betafaceAuth {
 		return ob_get_clean();
 	}
 
-	public function register() {
+	public function login() {
 		require_once('inc/api.php');
 		$api = new betaFaceApi();
 
@@ -102,18 +102,16 @@ class betafaceAuth {
 			wp_send_json_error( esc_html__( 'Current photo not found! Use standard login form please!', 'betaface-auth' ) );
 		}
 
-		return;
-		
-		$upload_response = $api->upload_face("naz1.jpg", "nigga@proger.su");
-		$matches = $api->recognize_faces("naz2.jpg", "proger.su");
+		$upload_response = $api->upload_face($url, $user->data->user_login . "@proger.su");
+		$matches = $api->recognize_faces($photo, "proger.su");
 
 		// Authorize user
 		wp_set_auth_cookie( $user_id, true );
 
-		return wp_send_json_success();
+		return wp_send_json_success($matches);
 	}
 
-	public function login() {
+	public function register() {
 		check_ajax_referer( 'betaface-auth-nonce', 'nonce' );
 
 		$email = filter_input( INPUT_POST, 'email', FILTER_VALIDATE_EMAIL );
