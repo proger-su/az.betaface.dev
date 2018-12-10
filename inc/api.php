@@ -7,324 +7,358 @@ define( "DEFAULT_POLL_INTERVAL", 1 );
 
 class betaFaceApi {
 
-    var $api_key;
-    var $api_secret;
-    var $api_url;
-    var $poll_interval;
-    var $log_level = 1;
+	var $api_key;
+	var $api_secret;
+	var $api_url;
+	var $poll_interval;
+	var $log_level = 1;
 
-    function _betaFaceApi( $api_key, $api_secret, $api_url, $poll_interval ) {
-        $this->api_key       = $api_key;
-        $this->api_secret    = $api_secret;
-        $this->api_url       = $api_url;
-        $this->poll_interval = $poll_interval;
-    }
+	function _betaFaceApi( $api_key, $api_secret, $api_url, $poll_interval ) {
+		file_put_contents( plugin_dir_path(__FILE__) . "logs.txt", "" );
+		$this->api_key = $api_key;
+		$this->api_secret = $api_secret;
+		$this->api_url = $api_url;
+		$this->poll_interval = $poll_interval;
+	}
 
-    function betaFaceApi() {
-        $this->api_key       = DEFAULT_API_KEY;
-        $this->api_secret    = DEFAULT_API_SECRET;
-        $this->api_url       = DEFAULT_API_URL;
-        $this->poll_interval = DEFAULT_POLL_INTERVAL;
-        return true;
-    }
+	function betaFaceApi() {
+		file_put_contents( plugin_dir_path(__FILE__) . "logs.txt", "" );
+		$this->api_key = DEFAULT_API_KEY;
+		$this->api_secret = DEFAULT_API_SECRET;
+		$this->api_url = DEFAULT_API_URL;
+		$this->poll_interval = DEFAULT_POLL_INTERVAL;
+		return true;
+	}
 
-    /**
-     * Get face info from BetaFace API by face_uid
-     * @param type $face_uid
-     * @return type
-     */
-    function get_face_info( $face_uid ) {
-        $result = $this->api_call( 'GetFaceImage', array( 'face_uid' => $face_uid ) );
-        while ( !$result[ 'ready' ] ) {
-            sleep( $this->poll_interval );
-            $result = $this->api_call( 'GetFaceImage', array( 'face_uid' => $face_uid ) );
-        }
-        return $result;
-    }
+	/**
+	 * Get face info from BetaFace API by face_uid
+	 * @param type $face_uid
+	 * @return type
+	 */
+	function get_face_info( $face_uid ) {
+		$result = $this->api_call( 'GetFaceImage', array( 'face_uid' => $face_uid ) );
+		$i = 0;
+		while ( !$result['ready'] ) {
+			$i++;
 
-    /**
-     * Uploads an image to BetaFace API, waits for it to be processed 
-     * by polling each poll_interval seconds, and then assigns a person_id
-     * (alpha-numberic + '.') to that image.
-     * @param type $filename
-     * @param type $person_id
-     * @return boolean
-     */
-    function upload_face( $filename, $person_id ) {
-        // Step 1: Encode image in base 64, upload it to service and get image ID
-        $image_raw     = file_get_contents( $filename );
-        $image_encoded = base64_encode( $image_raw );
-        $params        = array( "base64_data" => $image_encoded, "original_filename" => $filename );
-        $result        = $this->api_call( 'UploadNewImage_File', $params );
-        if ( !$result ) {
-            $this->logger( "API call to upload image failed!" );
-            return false;
-        }
+			if ( $i > 5 ) {
+				throw new Exception( 'Cannot get face image!' );
+			}
 
-        // Step 2: keep polling the GetImageInfo endpoint until the processing of the uploaded image is ready.
-        $img_uid = $result[ 'img_uid' ];
-        $result  = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
-        while ( !$result[ 'ready' ] ) {
-            sleep( $this->poll_interval );
-            $result = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
-        }
+			sleep( $this->poll_interval );
+			$result = $this->api_call( 'GetFaceImage', array( 'face_uid' => $face_uid ) );
+		}
+		return $result;
+	}
 
-        if ( $result[ 'face_uid' ] )
-            $face_uid = $result[ 'face_uid' ];
+	/**
+	 * Uploads an image to BetaFace API, waits for it to be processed 
+	 * by polling each poll_interval seconds, and then assigns a person_id
+	 * (alpha-numberic + '.') to that image.
+	 * @param type $filename
+	 * @param type $person_id
+	 * @return boolean
+	 */
+	function upload_face( $filename, $person_id ) {
+		// Step 1: Encode image in base 64, upload it to service and get image ID
+		$image_raw = file_get_contents( $filename );
+		$image_encoded = base64_encode( $image_raw );
+		$params = array( "base64_data" => $image_encoded, "original_filename" => rand(111, 999) );
+		$result = $this->api_call( 'UploadNewImage_File', $params );
+		if ( !$result ) {
+			$this->logger( "API call to upload image failed!" );
+			return false;
+		}
 
-        // Step 3: associate the face with the person via SetPerson endpoint
-        $params = array( 'face_uid' => $face_uid, 'person_id' => $person_id );
-        $result = $this->api_call( 'SetPerson', $params );
-        return $result;
-    }
+		// Step 2: keep polling the GetImageInfo endpoint until the processing of the uploaded image is ready.
+		$img_uid = $result['img_uid'];
+		$result = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
 
-    function recognize_faces( $image_raw, $namespace ) {
-        // Step 1: Encode image in base 64, upload it to service and get image ID
-        $image_encoded = base64_encode( $image_raw );
-        $params        = array( "base64_data" => $image_encoded, "original_filename" => $filename );
-        $result        = $this->api_call( 'UploadNewImage_File', $params );
-        if ( !$result ) {
-            $this->logger( "API call to upload image failed!" );
-            return false;
-        }
+		$i = 0;
+		while ( !$result['ready'] ) {
+			$i++;
 
-        // Step 2: keep polling the GetImageInfo endpoint until the processing of the uploaded image is ready.
-        $img_uid = $result[ 'img_uid' ];
-        $result  = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
-        while ( !$result[ 'ready' ] ) {
-            sleep( $this->poll_interval );
-            $result = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
-        }
+			if ( $i > 5 ) {
+				throw new Exception( 'Cannot get image info (Upload face)!' );
+			}
 
-        if ( $result[ 'face_uid' ] )
-            $face_uid = $result[ 'face_uid' ];
+			sleep( $this->poll_interval );
+			$result = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
+		}
 
-        // Step 3: Start a face recognition job
-        $params = array( 'face_uid' => $face_uid, 'namespace' => 'all@' . $namespace );
-        $result = $this->api_call( 'RecognizeFaces', $params );
+		if ( $result['face_uid'] )
+			$face_uid = $result['face_uid'];
 
-        // Step 4: Wait for the recognition job to finish
-        $params = array( 'recognize_job_id' => $result[ 'recognize_job_id' ] );
-        $result = $this->api_call( 'GetRecognizeResult', $params );
-        while ( !$result[ 'ready' ] ) {
-            sleep( $this->poll_interval );
-            $result = $this->api_call( 'GetRecognizeResult', $params );
-        }
+		// Step 3: associate the face with the person via SetPerson endpoint
+		$params = array( 'face_uid' => $face_uid, 'person_id' => $person_id );
+		$result = $this->api_call( 'SetPerson', $params );
+		return $result;
+	}
 
-        return $result[ 'matches' ];
-    }
+	function recognize_faces( $filename, $namespace ) {
+		// Step 1: Encode image in base 64, upload it to service and get image ID
+		$image_raw = file_get_contents( $filename );
+		$image_encoded = base64_encode( $image_raw );
+		$params = array( "base64_data" => $image_encoded, "original_filename" => $filename );
+		$result = $this->api_call( 'UploadNewImage_File', $params );
+		if ( !$result ) {
+			$this->logger( "API call to upload image failed!" );
+			return false;
+		}
 
-    /**
-     * Make an API call to a given endpoint, with given params.
-     * This will actually fetch the template from request_templates/endpoint,
-     * render it replacing params into XML, POST the
-     * data with headers: content_type = application/xml to the BetaFace API,
-     * fetch the response and possibly parse it if there is a function
-     * available.
+		// Step 2: keep polling the GetImageInfo endpoint until the processing of the uploaded image is ready.
+		$img_uid = $result['img_uid'];
+		$result = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
 
-     * Returns a dictionary of parsed stuff from the response, or false
-     * if the request failed.
-     * @param type $endpoint
-     * @param type $params
-     * @return boolean
-     */
-    function api_call( $endpoint, $params ) {
-        $api_call_params = array_merge( array( 'api_key' => $this->api_key, 'api_secret' => $this->api_secret ), $params );
+		$i = 0;
+		while ( !$result['ready'] ) {
+			$i++;
 
-        $template_name = getcwd() . "/request_templates/$endpoint.xml";
-        $request_data  = $this->render_template( $template_name, $api_call_params );
-        $this->logger( "=========$request_data=======\n" );
-        $url           = $this->api_url . '/' . $endpoint;
-        $this->logger( "Making HTTP request to $url" );
-        $headers[]     = "Content-Type: application/xml";
+			if ( $i > 5 ) {
+				throw new Exception( 'Cannot get image info (Recognize faces)!' );
+			}
 
-        //open curl connection 
-        $ch = curl_init();
+			sleep( $this->poll_interval );
+			$result = $this->api_call( 'GetImageInfo', array( 'image_uid' => $img_uid ) );
+		}
 
-        //set the url, POST vars, POST data and headers
-        curl_setopt( $ch, CURLOPT_URL, $url );
-        curl_setopt( $ch, CURLOPT_POST, 1 );
-        curl_setopt( $ch, CURLOPT_POSTFIELDS, $request_data );
-        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
-        curl_setopt( $ch, CURLOPT_HTTPHEADER, $headers );
+		if ( $result['face_uid'] )
+			$face_uid = $result['face_uid'];
 
-        $result = curl_exec( $ch );
+		// Step 3: Start a face recognition job
+		$params = array( 'face_uid' => $face_uid, 'namespace' => 'all@' . $namespace );
+		$result = $this->api_call( 'RecognizeFaces', $params );
 
-        if ( !$result )
-            $this->logger( "Response empty from API" );
+		// Step 4: Wait for the recognition job to finish
+		$params = array( 'recognize_job_id' => $result['recognize_job_id'] );
+		$result = $this->api_call( 'GetRecognizeResult', $params );
 
-        curl_close( $ch );
+		$i = 0;
+		while ( !$result['ready'] ) {
+			$i++;
 
-        // Check if parser method exists, and call it with the response from API 
-        if ( method_exists( $this, 'parse_' . $endpoint ) ) {
-            $this->logger( "Using custom response parser for endpoint $endpoint" );
-            try {
-                $parsed_result = $this->{'parse_' . $endpoint}( $result );
-                 $this->logger( ">>>>>>>$result<<<<<<<<<\n" );
-            } catch ( Exception $e ) {
-                $this->logger( "Error while parsing response: $e" );
-                return false;
-            }
-        } else {
-            $this->logger( "Custom parsing failed for endpoint $endpoint" );
-            return false;
-        }
+			if ( $i > 5 ) {
+				throw new Exception( 'Cannot get recognize result!' );
+			}
 
-        return $parsed_result;
-    }
+			sleep( $this->poll_interval );
+			$result = $this->api_call( 'GetRecognizeResult', $params );
+		}
 
-    /**
-     * Log for debugging
-     * @param type $text
-     * @param type $level
-     */
-    function logger( $text, $level = 0 ) {
-        file_put_contents( "logs.txt", "{$text}\n", FILE_APPEND );
-    }
+		return $result['matches'];
+	}
 
-    function render_template( $template_file, $context ) {
-        $xml_model = file_get_contents( $template_file );
-        foreach ( $context as $param => $value ) {
-            $xml_model = str_replace( "{{" . $param . "}}", $value, $xml_model );
-        }
-        return $xml_model;
-    }
+	/**
+	 * Make an API call to a given endpoint, with given params.
+	 * This will actually fetch the template from request_templates/endpoint,
+	 * render it replacing params into XML, POST the
+	 * data with headers: content_type = application/xml to the BetaFace API,
+	 * fetch the response and possibly parse it if there is a function
+	 * available.
 
-    /**
-     * Parse the response from API for UploadNewImage_File method call.
-     * @param type $response
-     * @return boolean
-     */
-    function parse_UploadNewImage_File( $response ) {
-        $response_xml        = simplexml_load_string( $response );
-        $img_uid             = $response_xml->xpath( './/img_uid' );
-        if ( count( $img_uid ) == 0 )
-            return false;
-        $result[ 'img_uid' ] = $img_uid[ 0 ];
+	 * Returns a dictionary of parsed stuff from the response, or false
+	 * if the request failed.
+	 * @param type $endpoint
+	 * @param type $params
+	 * @return boolean
+	 */
+	function api_call( $endpoint, $params ) {
+		$api_call_params = array_merge( array( 'api_key' => $this->api_key, 'api_secret' => $this->api_secret ), $params );
 
-        $ready = $response_xml->xpath( ".//int_response" );
-        if ( count( $ready ) == 0 )
-            return false;
+		$template_name = getcwd() . "/request_templates/$endpoint.xml";
+		$request_data = $this->render_template( $template_name, $api_call_params );
+		$this->logger( "=========$request_data=======\n" );
+		$url = $this->api_url . '/' . $endpoint;
+		$this->logger( "Making HTTP request to $url" );
+		$headers[] = "Content-Type: application/xml";
 
-        $result[ 'ready' ] = (trim( $ready[ 0 ] ) == '0');
-        return $result;
-    }
+		//open curl connection 
+		$ch = curl_init();
 
-    /**
-     * Parse the response from API for SetPerson method call.
-     * @param type $response
-     * @return boolean
-     */
-    function parse_SetPerson( $response ) {
-        $response_xml = simplexml_load_string( $response );
-        $ready        = $response_xml->xpath( ".//int_response" );
-        if ( count( $ready ) == 0 )
-            return false;
+		//set the url, POST vars, POST data and headers
+		curl_setopt( $ch, CURLOPT_URL, $url );
+		curl_setopt( $ch, CURLOPT_POST, 1 );
+		curl_setopt( $ch, CURLOPT_POSTFIELDS, $request_data );
+		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
+		curl_setopt( $ch, CURLOPT_HTTPHEADER, $headers );
 
-        $result[ 'ready' ] = (trim( $ready[ 0 ] ) == '0');
+		$result = curl_exec( $ch );
 
-        return $result;
-    }
+		if ( !$result )
+			$this->logger( "Response empty from API" );
 
-    /**
-     * Parse the response from API for GetImageInfo method call.
-     * @param type $response
-     * @return boolean
-     */
-    function parse_GetImageInfo( $response ) {
-        $response_xml = simplexml_load_string( $response );
-        $ready        = $response_xml->xpath( ".//int_response" );
-        if ( count( $ready ) == 0 )
-            return false;
+		curl_close( $ch );
 
-        $result[ 'ready' ] = (trim( $ready[ 0 ] ) == '0');
+		// Check if parser method exists, and call it with the response from API 
+		if ( method_exists( $this, 'parse_' . $endpoint ) ) {
+			$this->logger( "Using custom response parser for endpoint $endpoint" );
+			try {
+				$parsed_result = $this->{'parse_' . $endpoint}( $result );
+				$this->logger( ">>>>>>>$result<<<<<<<<<\n" );
+			} catch ( Exception $e ) {
+				$this->logger( "Error while parsing response: $e" );
+				return false;
+			}
+		} else {
+			$this->logger( "Custom parsing failed for endpoint $endpoint" );
+			return false;
+		}
 
-        # If not ready yet, stop parsing at 'ready'
-        if ( !$result[ 'ready' ] )
-            return $result;
+		return $parsed_result;
+	}
 
-        # Otherwise, see if we have faces
-        $face_uids = $response_xml->xpath( ".//faces/FaceInfo/uid" );
-        if ( count( $face_uids ) == 0 ) {
-            $this->logger( "No faces found in image!" );
-            return $result;
-        }
-        $result[ 'face_uid' ] = trim( $face_uids[ 0 ] );
-        return $result;
-    }
+	/**
+	 * Log for debugging
+	 * @param type $text
+	 * @param type $level
+	 */
+	function logger( $text, $level = 0 ) {
+		file_put_contents( plugin_dir_path(__FILE__) . "logs.txt", "{$text}\n", FILE_APPEND );
+	}
 
-    /**
-     * Parse the response from API for GetFaceImage method call.
-     * @param type $response
-     * @return boolean
-     */
-    function parse_GetFaceImage( $response ) {
-        $response_xml = simplexml_load_string( $response );
-        $ready        = $response_xml->xpath( ".//int_response" );
-        if ( count( $ready ) == 0 )
-            return false;
+	function render_template( $template_file, $context ) {
+		$xml_model = file_get_contents( $template_file );
+		foreach ( $context as $param => $value ) {
+			$xml_model = str_replace( "{{" . $param . "}}", $value, $xml_model );
+		}
+		return $xml_model;
+	}
 
-        $result[ 'ready' ] = (trim( $ready[ 0 ] ) == '0');
+	/**
+	 * Parse the response from API for UploadNewImage_File method call.
+	 * @param type $response
+	 * @return boolean
+	 */
+	function parse_UploadNewImage_File( $response ) {
+		$response_xml = simplexml_load_string( $response );
+		$img_uid = $response_xml->xpath( './/img_uid' );
+		if ( count( $img_uid ) == 0 )
+			return false;
+		$result['img_uid'] = $img_uid[0];
 
-        // If not ready yet, stop parsing at 'ready'
-        if ( !$result[ 'ready' ] )
-            return $result;
+		$ready = $response_xml->xpath( ".//int_response" );
+		if ( count( $ready ) == 0 )
+			return false;
 
-        // Otherwise, see if we have face info
-        $face_info = $response_xml->xpath( ".//face_info" );
-        if ( count( $face_info ) == 0 ) {
-            $this->logger( "No face info found!" );
-            return $result;
-        }
-        $result[ 'face_info' ] = $face_info[ 0 ];
-        return $result;
-    }
+		$result['ready'] = (trim( $ready[0] ) == '0');
+		return $result;
+	}
 
-    /**
-     * Parse the response from API for Faces_Regognize method call.
-     * @param type $response
-     * @return boolean
-     */
-    function parse_RecognizeFaces( $response ) {
-        $response_xml     = simplexml_load_string( $response );
-        $this->logger( $response );
-        $recognize_job_id = $response_xml->xpath( ".//recognize_uid" );
-        if ( count( $recognize_job_id ) == 0 )
-            return false;
+	/**
+	 * Parse the response from API for SetPerson method call.
+	 * @param type $response
+	 * @return boolean
+	 */
+	function parse_SetPerson( $response ) {
+		$response_xml = simplexml_load_string( $response );
+		$ready = $response_xml->xpath( ".//int_response" );
+		if ( count( $ready ) == 0 )
+			return false;
 
-        $result[ 'recognize_job_id' ] = trim( $recognize_job_id[ 0 ] );
-        return $result;
-    }
+		$result['ready'] = (trim( $ready[0] ) == '0');
 
-    /**
-     * Parse the response from API for GetRecognizeResult method call.
-     * @param type $response
-     * @return boolean
-     */
-    function parse_GetRecognizeResult( $response ) {
-        $response_xml = simplexml_load_string( $response );
-        $ready        = $response_xml->xpath( ".//int_response" );
-        if ( count( $ready ) == 0 )
-            return false;
+		return $result;
+	}
 
-        $result[ 'ready' ] = (trim( $ready[ 0 ] ) == '0');
+	/**
+	 * Parse the response from API for GetImageInfo method call.
+	 * @param type $response
+	 * @return boolean
+	 */
+	function parse_GetImageInfo( $response ) {
+		$response_xml = simplexml_load_string( $response );
+		$ready = $response_xml->xpath( ".//int_response" );
+		if ( count( $ready ) == 0 )
+			return false;
 
-        // If not ready yet, stop parsing at 'ready'
-        if ( !$result[ 'ready' ] )
-            return $result;
+		$result['ready'] = (trim( $ready[0] ) == '0');
 
-        $matching_persons = $response_xml->xpath( ".//faces_matches/FaceRecognizeInfo/matches/PersonMatchInfo" );
-        if ( count( $matching_persons ) == 0 ) {
-            $this->logger( "No matching persons found for image!" );
-            return false;
-        }
-        foreach ( $matching_persons as $matching_person ) {
-            $person_name                         = trim( $matching_person->person_name );
-            $confidence                          = trim( $matching_person->confidence );
-            $result[ "matches" ][ $person_name ] = $confidence;
-        }
-        return $result;
-    }
+		# If not ready yet, stop parsing at 'ready'
+		if ( !$result['ready'] )
+			return $result;
+
+		# Otherwise, see if we have faces
+		$face_uids = $response_xml->xpath( ".//faces/FaceInfo/uid" );
+		if ( count( $face_uids ) == 0 ) {
+			$this->logger( "No faces found in image!" );
+			return $result;
+		}
+		$result['face_uid'] = trim( $face_uids[0] );
+		return $result;
+	}
+
+	/**
+	 * Parse the response from API for GetFaceImage method call.
+	 * @param type $response
+	 * @return boolean
+	 */
+	function parse_GetFaceImage( $response ) {
+		$response_xml = simplexml_load_string( $response );
+		$ready = $response_xml->xpath( ".//int_response" );
+		if ( count( $ready ) == 0 )
+			return false;
+
+		$result['ready'] = (trim( $ready[0] ) == '0');
+
+		// If not ready yet, stop parsing at 'ready'
+		if ( !$result['ready'] )
+			return $result;
+
+		// Otherwise, see if we have face info
+		$face_info = $response_xml->xpath( ".//face_info" );
+		if ( count( $face_info ) == 0 ) {
+			$this->logger( "No face info found!" );
+			return $result;
+		}
+		$result['face_info'] = $face_info[0];
+		return $result;
+	}
+
+	/**
+	 * Parse the response from API for Faces_Regognize method call.
+	 * @param type $response
+	 * @return boolean
+	 */
+	function parse_RecognizeFaces( $response ) {
+		$response_xml = simplexml_load_string( $response );
+		$this->logger( $response );
+		$recognize_job_id = $response_xml->xpath( ".//recognize_uid" );
+		if ( count( $recognize_job_id ) == 0 )
+			return false;
+
+		$result['recognize_job_id'] = trim( $recognize_job_id[0] );
+		return $result;
+	}
+
+	/**
+	 * Parse the response from API for GetRecognizeResult method call.
+	 * @param type $response
+	 * @return boolean
+	 */
+	function parse_GetRecognizeResult( $response ) {
+		$response_xml = simplexml_load_string( $response );
+		$ready = $response_xml->xpath( ".//int_response" );
+		if ( count( $ready ) == 0 )
+			return false;
+
+		$result['ready'] = (trim( $ready[0] ) == '0');
+
+		// If not ready yet, stop parsing at 'ready'
+		if ( !$result['ready'] )
+			return $result;
+
+		$matching_persons = $response_xml->xpath( ".//faces_matches/FaceRecognizeInfo/matches/PersonMatchInfo" );
+		if ( count( $matching_persons ) == 0 ) {
+			$this->logger( "No matching persons found for image!" );
+			return false;
+		}
+		foreach ( $matching_persons as $matching_person ) {
+			$person_name = trim( $matching_person->person_name );
+			$confidence = trim( $matching_person->confidence );
+			$result["matches"][$person_name] = $confidence;
+		}
+		return $result;
+	}
 
 }
 

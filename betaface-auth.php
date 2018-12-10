@@ -3,7 +3,7 @@
   Plugin Name: Betaface Auth
   Description: WordPress Betaface Auth
   Author: Alina Zakharchenko
-  Author URI: 
+  Author URI:
   Version: 1.0
  */
 
@@ -95,20 +95,25 @@ class betafaceAuth {
 			wp_send_json_error( esc_html__( 'This email not found!', 'betaface-auth' ) );
 		}
 
-		$photo = (int) get_user_meta( $user->ID, 'betaface-auth-user-photo', true );
-		$url = wp_get_attachment_url( $photo );
+		$current = (int) get_user_meta( $user->ID, 'betaface-auth-user-photo', true );
+		$path = get_attached_file( $current );
+		$photo = self::saveImage( $photo, 'login_image', true );
 
-		if ( !$url ) {
+		if ( !$path || !$photo ) {
 			wp_send_json_error( esc_html__( 'Current photo not found! Use standard login form please!', 'betaface-auth' ) );
 		}
 
-		$upload_response = $api->upload_face($url, $user->data->user_login . "@proger.su");
-		$matches = $api->recognize_faces($photo, "proger.su");
+		try {
+			$upload_response = $api->upload_face( $path, "nigga@proger.su" );
+			$matches = $api->recognize_faces( $photo, "proger.su" );
 
-		// Authorize user
-		wp_set_auth_cookie( $user_id, true );
+			// Authorize user
+			wp_set_auth_cookie( $user_id, true );
 
-		return wp_send_json_success($matches);
+			wp_send_json_success( $matches );
+		} catch ( Exception $e ) {
+			wp_send_json_error( $e->getMessage() );
+		}
 	}
 
 	public function register() {
@@ -140,7 +145,7 @@ class betafaceAuth {
 
 		wp_mail( $email, get_bloginfo( 'name' ) . ' (' . esc_html( 'New registration', 'betaface-auth' ) . ')', "<p><strong>" . esc_html__( 'Your password', 'betaface-auth' ) . ":</strong> {$random_password}</p>" );
 
-		$id = self::saveImage( $photo, 'Nigga' );
+		$id = self::saveImage( $photo, 'register_image' );
 
 		if ( !$id ) {
 			wp_send_json_error( esc_html__( 'Cannot add user photo!', 'betaface-auth' ) );
@@ -154,7 +159,7 @@ class betafaceAuth {
 		return wp_send_json_success();
 	}
 
-	static function saveImage( $base64_img, $title ) {
+	static function saveImage( $base64_img, $title, $tmp = false ) {
 		// Upload dir.
 		$upload_dir = wp_upload_dir();
 		$upload_path = str_replace( '/', DIRECTORY_SEPARATOR, $upload_dir['path'] ) . DIRECTORY_SEPARATOR;
@@ -177,7 +182,13 @@ class betafaceAuth {
 			'guid' => $upload_dir['url'] . '/' . basename( $hashed_filename )
 		);
 
-		return wp_insert_attachment( $attachment, $upload_dir['path'] . '/' . $hashed_filename );
+		$file_path = $upload_dir['path'] . '/' . $hashed_filename;
+
+		if ( $tmp ) {
+			return $file_path;
+		}
+
+		return wp_insert_attachment( $attachment, $file_path );
 	}
 
 }
