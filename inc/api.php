@@ -63,7 +63,7 @@ class betaFaceApi {
 		// Step 1: Encode image in base 64, upload it to service and get image ID
 		$image_raw = file_get_contents( $filename );
 		$image_encoded = base64_encode( $image_raw );
-		$params = array( "base64_data" => $image_encoded, "original_filename" => rand(111, 999) );
+		$params = array( "base64_data" => $image_encoded, "original_filename" => $filename );
 		$result = $this->api_call( 'UploadNewImage_File', $params );
 		if ( !$result ) {
 			$this->logger( "API call to upload image failed!" );
@@ -165,7 +165,7 @@ class betaFaceApi {
 	function api_call( $endpoint, $params ) {
 		$api_call_params = array_merge( array( 'api_key' => $this->api_key, 'api_secret' => $this->api_secret ), $params );
 
-		$template_name = getcwd() . "/request_templates/$endpoint.xml";
+		$template_name = plugin_dir_path(__FILE__) . "request_templates/$endpoint.xml";
 		$request_data = $this->render_template( $template_name, $api_call_params );
 		$this->logger( "=========$request_data=======\n" );
 		$url = $this->api_url . '/' . $endpoint;

@@ -62,7 +62,7 @@ var betafaceAuth = {
         },
         attach: function () {
             if (!this.$screen.length) {
-                alert('No DOM element found!')
+                swal('Oh noes!', 'No DOM element found!', 'error');
                 return;
             }
 
@@ -95,7 +95,7 @@ var betafaceAuth = {
         if (re.test(String(email).toLowerCase())) {
             return true;
         }
-        alert('Email is empty or incorrect!');
+        swal('Oh noes!', 'Email is empty or incorrect!', 'error');
         return false;
     },
     register: function () {
@@ -117,10 +117,11 @@ var betafaceAuth = {
                     photo: photo
                 },
                 beforeSend: function () {
+                    _this.webcam.$wrap.addClass('loading');
                 },
                 success: function (response) {
                     if (!response.success) {
-                        alert(response.data);
+                        swal('Oh noes!', response.data, 'error');
                         _this.webcam.close();
                         return;
                     }
@@ -128,9 +129,10 @@ var betafaceAuth = {
                     location.reload();
                 },
                 error: function (jqXHR, textStatus) {
-                    alert(textStatus);
+                    swal('Oh noes!', textStatus, 'error');
                 },
                 complete: function () {
+                    _this.webcam.$wrap.removeClass('loading');
                 }
             });
         });
@@ -154,10 +156,11 @@ var betafaceAuth = {
                     photo: photo
                 },
                 beforeSend: function () {
+                    _this.webcam.$wrap.addClass('loading');
                 },
                 success: function (response) {
                     if (!response.success) {
-                        alert(response.data);
+                        swal('Oh noes!', response.data, 'error');
                         _this.webcam.close();
                         return;
                     }
@@ -165,9 +168,10 @@ var betafaceAuth = {
                     location.reload();
                 },
                 error: function (jqXHR, textStatus) {
-                    alert(textStatus);
+                    swal('Oh noes!', textStatus, 'error');
                 },
                 complete: function () {
+                    _this.webcam.$wrap.removeClass('loading');
                 }
             });
         });

@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) or die( 'No direct access' );
 
 class betafaceAuth {
 
-	static $version = '1.0.0';
+	static $version = '1.0.1';
 	private $actions = array(
 		'register' => 'betaface_register',
 		'login' => 'betaface_login'
@@ -34,7 +34,8 @@ class betafaceAuth {
 	public function enqScripts() {
 		wp_enqueue_style( 'betaface-auth', plugin_dir_url( __FILE__ ) . 'static/css/styles.css', array(), self::$version );
 		wp_enqueue_script( 'webcam', plugin_dir_url( __FILE__ ) . 'static/js/webcam.js', array(), '1.0.25', true );
-		wp_enqueue_script( 'betaface-auth', plugin_dir_url( __FILE__ ) . 'static/js/scripts.js', array( 'jquery', 'webcam' ), self::$version, true );
+		wp_enqueue_script( 'sweetalert', plugin_dir_url( __FILE__ ) . 'static/js/sweetalert.min.js', array(), '2.1.2', true );
+		wp_enqueue_script( 'betaface-auth', plugin_dir_url( __FILE__ ) . 'static/js/scripts.js', array( 'jquery', 'webcam', 'sweetalert' ), self::$version, true );
 
 		wp_localize_script( 'betaface-auth', 'betafaceAuthConfig', array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
@@ -67,8 +68,15 @@ class betafaceAuth {
 	}
 
 	public function renderAuthForm() {
+		static $running = false;
+		
+		if($running) {
+			return esc_html__('Only one auth form per page!', 'betaface-auth');
+		}
+		
 		ob_start();
 		require 'templates/form.php';
+		$running = true;
 		return ob_get_clean();
 	}
 
@@ -95,22 +103,44 @@ class betafaceAuth {
 			wp_send_json_error( esc_html__( 'This email not found!', 'betaface-auth' ) );
 		}
 
+		$user_login = $user->data->user_login;
+		$user_id = $user->ID;
+		
 		$current = (int) get_user_meta( $user->ID, 'betaface-auth-user-photo', true );
 		$path = get_attached_file( $current );
-		$photo = self::saveImage( $photo, 'login_image', true );
+		$photo = self::saveImage( $photo, "login_image_for_{$user_login}", true );
 
 		if ( !$path || !$photo ) {
 			wp_send_json_error( esc_html__( 'Current photo not found! Use standard login form please!', 'betaface-auth' ) );
 		}
 
 		try {
-			$upload_response = $api->upload_face( $path, "nigga@proger.su" );
-			$matches = $api->recognize_faces( $photo, "proger.su" );
+			$matches = array();
+			preg_match( '/([^\/]+)$/', get_home_url(), $matches );
 
-			// Authorize user
-			wp_set_auth_cookie( $user_id, true );
+			if ( isset( $matches[1] ) ) {
+				$domain = $matches[1];
+				$prepared_name = "{$user_login}@{$domain}";
+			} else {
+				wp_send_json_error( esc_html__( 'Cannot get site domain!', 'betaface-auth' ) );
+			}
 
-			wp_send_json_success( $matches );
+			$upload = $api->upload_face( $path, $prepared_name );
+			$recognize = $api->recognize_faces( $photo, $domain );
+
+			if ( !isset( $recognize[$prepared_name] ) ) {
+				wp_send_json_error( esc_html__( 'Cannot recognize face! Something went wrong!', 'betaface-auth' ) );
+			}
+
+			$result = (float) $recognize[$prepared_name];
+			$round = round( $result * 100 );
+
+			if ( $round >= 80 ) {
+				wp_set_auth_cookie( $user_id, true );
+				wp_send_json_success();
+			} else {
+				wp_send_json_error( esc_html__( 'Cannot recognize face! Maybe you are another person!', 'betaface-auth' ) );
+			}
 		} catch ( Exception $e ) {
 			wp_send_json_error( $e->getMessage() );
 		}
@@ -145,7 +175,7 @@ class betafaceAuth {
 
 		wp_mail( $email, get_bloginfo( 'name' ) . ' (' . esc_html( 'New registration', 'betaface-auth' ) . ')', "<p><strong>" . esc_html__( 'Your password', 'betaface-auth' ) . ":</strong> {$random_password}</p>" );
 
-		$id = self::saveImage( $photo, 'register_image' );
+		$id = self::saveImage( $photo, "register_image_for_{$user_name}" );
 
 		if ( !$id ) {
 			wp_send_json_error( esc_html__( 'Cannot add user photo!', 'betaface-auth' ) );
